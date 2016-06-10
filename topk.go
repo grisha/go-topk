@@ -28,8 +28,8 @@ import (
 // Element is a TopK item
 type Element struct {
 	Key   string
-	Count int
-	Error int
+	Count int32
+	Error int32
 }
 
 type elementsByCountDescending []Element
@@ -41,7 +41,7 @@ func (elts elementsByCountDescending) Less(i, j int) bool {
 func (elts elementsByCountDescending) Swap(i, j int) { elts[i], elts[j] = elts[j], elts[i] }
 
 type keys struct {
-	m    map[string]int
+	m    map[string]int32
 	elts []Element
 }
 
@@ -55,13 +55,13 @@ func (tk *keys) Swap(i, j int) {
 
 	tk.elts[i], tk.elts[j] = tk.elts[j], tk.elts[i]
 
-	tk.m[tk.elts[i].Key] = i
-	tk.m[tk.elts[j].Key] = j
+	tk.m[tk.elts[i].Key] = int32(i)
+	tk.m[tk.elts[j].Key] = int32(j)
 }
 
 func (tk *keys) Push(x interface{}) {
 	e := x.(Element)
-	tk.m[e.Key] = len(tk.elts)
+	tk.m[e.Key] = int32(len(tk.elts))
 	tk.elts = append(tk.elts, e)
 }
 
@@ -76,22 +76,22 @@ func (tk *keys) Pop() interface{} {
 
 // Stream calculates the TopK elements for a stream
 type Stream struct {
-	n      int
+	n      int32
 	k      keys
-	alphas []int
+	alphas []int32
 }
 
 // New returns a Stream estimating the top n most frequent elements
-func New(n int) *Stream {
+func New(n int32) *Stream {
 	return &Stream{
 		n:      n,
-		k:      keys{m: make(map[string]int), elts: make([]Element, 0, n)},
-		alphas: make([]int, n*6), // 6 is the multiplicative constant from the paper
+		k:      keys{m: make(map[string]int32), elts: make([]Element, 0, n)},
+		alphas: make([]int32, n*6), // 6 is the multiplicative constant from the paper
 	}
 }
 
 // Insert adds an element to the stream to be tracked
-func (s *Stream) Insert(x string, count int) {
+func (s *Stream) Insert(x string, count int32) {
 
 	h := fnv.New32a()
 	h.Write([]byte(x))
@@ -100,12 +100,12 @@ func (s *Stream) Insert(x string, count int) {
 	// are we tracking this element?
 	if idx, ok := s.k.m[x]; ok {
 		s.k.elts[idx].Count += count
-		heap.Fix(&s.k, idx)
+		heap.Fix(&s.k, int(idx))
 		return
 	}
 
 	// can we track more elements?
-	if len(s.k.elts) < s.n {
+	if int32(len(s.k.elts)) < s.n {
 		// there is free space
 		heap.Push(&s.k, Element{Key: x, Count: count})
 		return
